@@ -1,10 +1,10 @@
 FROM ubuntu:jammy
-MAINTAINER Odoo S.A. <info@odoo.com>
+LABEL maintainer="Odoo S.A. <info@odoo.com>"
 
 SHELL ["/bin/bash", "-xo", "pipefail", "-c"]
 
 # Generate locale C.UTF-8 for postgres and general locale data
-ENV LANG en_US.UTF-8
+ENV LANG=en_US.UTF-8
 
 # Retrieve the target architecture to install the correct wkhtmltopdf package
 ARG TARGETARCH
@@ -21,7 +21,6 @@ RUN apt-get update && \
         gnupg \
         libssl-dev \
         node-less \
-        npm \
         python3-magic \
         python3-num2words \
         python3-odf \
@@ -67,12 +66,16 @@ RUN echo 'deb http://apt.postgresql.org/pub/repos/apt/ jammy-pgdg main' > /etc/a
     && rm -rf /var/lib/apt/lists/*
 
 # Install rtlcss (on Debian buster)
-RUN npm install -g rtlcss
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends nodejs npm \
+    && npm install -g rtlcss \
+    && apt-get purge --autoremove -y npm \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Odoo
-ENV ODOO_VERSION 17.0
-ARG ODOO_RELEASE=20251222
-ARG ODOO_SHA=89bedfe72d8d35aac19b03135ba8e7064e6862ab
+ENV ODOO_VERSION=17.0
+ARG ODOO_RELEASE=20260908
+ARG ODOO_SHA=57a8df50c37363cce2d3f2e626d1b4e67b53fc11
 RUN curl -o odoo.deb -sSL http://nightly.odoo.com/${ODOO_VERSION}/nightly/deb/odoo_${ODOO_VERSION}.${ODOO_RELEASE}_all.deb \
     && echo "${ODOO_SHA} odoo.deb" | sha1sum -c - \
     && apt-get update \
@@ -93,7 +96,7 @@ VOLUME ["/var/lib/odoo", "/mnt/extra-addons"]
 EXPOSE 8069 8071 8072
 
 # Set the default config file
-ENV ODOO_RC /etc/odoo/odoo.conf
+ENV ODOO_RC=/etc/odoo/odoo.conf
 
 COPY wait-for-psql.py /usr/local/bin/wait-for-psql.py
 

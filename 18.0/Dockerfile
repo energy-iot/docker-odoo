@@ -1,10 +1,10 @@
 FROM ubuntu:noble
-MAINTAINER Odoo S.A. <info@odoo.com>
+LABEL maintainer="Odoo S.A. <info@odoo.com>"
 
 SHELL ["/bin/bash", "-xo", "pipefail", "-c"]
 
 # Generate locale C.UTF-8 for postgres and general locale data
-ENV LANG en_US.UTF-8
+ENV LANG=en_US.UTF-8
 
 # Retrieve the target architecture to install the correct wkhtmltopdf package
 ARG TARGETARCH
@@ -12,7 +12,6 @@ ARG TARGETARCH
 # Install some deps, lessc and less-plugin-clean-css, and wkhtmltopdf
 
 RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
@@ -21,7 +20,6 @@ RUN apt-get update && \
         gnupg \
         libssl-dev \
         node-less \
-        npm \
         python3-magic \
         python3-num2words \
         python3-odf \
@@ -67,12 +65,16 @@ RUN echo 'deb http://apt.postgresql.org/pub/repos/apt/ noble-pgdg main' > /etc/a
     && rm -rf /var/lib/apt/lists/*
 
 # Install rtlcss (on Debian buster)
-RUN npm install -g rtlcss
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends nodejs npm \
+    && npm install -g rtlcss \
+    && apt-get purge --autoremove -y npm \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Odoo
-ENV ODOO_VERSION 18.0
-ARG ODOO_RELEASE=20251222
-ARG ODOO_SHA=fc71ac3c039e84f1aa33ab2bf2a3922463eee889
+ENV ODOO_VERSION=18.0
+ARG ODOO_RELEASE=20260908
+ARG ODOO_SHA=4f5862fd0a33630abbfc855ce2b5f21caea6a4fb
 RUN curl -o odoo.deb -sSL http://nightly.odoo.com/${ODOO_VERSION}/nightly/deb/odoo_${ODOO_VERSION}.${ODOO_RELEASE}_all.deb \
     && echo "${ODOO_SHA} odoo.deb" | sha1sum -c - \
     && apt-get update \
@@ -93,7 +95,7 @@ VOLUME ["/var/lib/odoo", "/mnt/extra-addons"]
 EXPOSE 8069 8071 8072
 
 # Set the default config file
-ENV ODOO_RC /etc/odoo/odoo.conf
+ENV ODOO_RC=/etc/odoo/odoo.conf
 
 COPY wait-for-psql.py /usr/local/bin/wait-for-psql.py
 
